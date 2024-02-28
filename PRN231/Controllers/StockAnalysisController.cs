@@ -82,4 +82,29 @@ public class StockAnalysisController : ControllerBase
             return StatusCode((int)response.StatusCode, "Failed to get data from the API.");
         }
     }
+
+    #region Duc
+    private double SXX(double[] arr)
+    {
+        double avg = arr.Average();
+        return arr.Sum(x => Math.Pow(x - avg, 2));
+    }
+    private double SXY(double[] y, double[] x)
+    {
+        double result = 0;
+        int n = y.Length;
+        if (x.Length == y.Length)
+        {
+            result = Enumerable.Range(0, n).Sum(i => (x[i] - x.Average()) * (y[i] - y.Average()));
+        }
+        return result;
+    }
+    [HttpGet("predict")]
+    public async Task<IActionResult> Predict(double[] y, double[] x, double indNum)
+    {
+        double slope = SXY(x, y) / SXX(x);
+        double yIntercept = y.Average() - (slope * x.Average());
+        return Ok(yIntercept + slope * indNum);
+    }
+    #endregion
 }
