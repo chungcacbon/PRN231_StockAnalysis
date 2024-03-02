@@ -228,7 +228,6 @@ public class StockAnalysisController : ControllerBase
 				{
 					return BadRequest("Exchanges code not found");
 				}
-
 				return Ok(upcom30Stocks.Concat(upcomStocks).ToArray());
 			}
 			else
