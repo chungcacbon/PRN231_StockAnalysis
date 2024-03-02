@@ -63,27 +63,51 @@ public class StockAnalysisController : ControllerBase
 		}
 	}
 
-	[HttpPost("compare")]
-	public async Task<IActionResult> Compare(CompareRequest request)
-	{
-		var client = _clientFactory.CreateClient();
-		var response = await client.GetAsync($"https://bgapidatafeed.vps.com.vn/getliststockdata/{request.FirstCode},{request.SecondCode}");
-		if (response.IsSuccessStatusCode)
-		{
-			var content = await response.Content.ReadAsStringAsync();
-			var stocks = JsonConvert.DeserializeObject<Stock[]>(content);
-			if (stocks == null || stocks.Length == 0)
-			{
-				return BadRequest("id not found");
-			}
-			return Ok(stocks);
-		}
-		else
-		{
-			return StatusCode((int)response.StatusCode, "Failed to get data from the API.");
-		}
-	}
+    [HttpPost("compare")]
+    public async Task<IActionResult> Compare(CompareRequest request)
+    {
+        var client = _clientFactory.CreateClient();
+        var response = await client.GetAsync($"https://bgapidatafeed.vps.com.vn/getliststockdata/{request.FirstCode},{request.SecondCode}");
+        if (response.IsSuccessStatusCode)
+        {
+            var content = await response.Content.ReadAsStringAsync();
+            var stocks = JsonConvert.DeserializeObject<Stock[]>(content);
+            if (stocks == null || stocks.Length == 0)
+            {
+                return BadRequest("id not found");
+            }
+            return Ok(stocks);
+        }
+        else
+        {
+            return StatusCode((int)response.StatusCode, "Failed to get data from the API.");
+        }
+    }
 
+    #region Duc
+    private double SXX(double[] arr)
+    {
+        double avg = arr.Average();
+        return arr.Sum(x => Math.Pow(x - avg, 2));
+    }
+    private double SXY(double[] y, double[] x)
+    {
+        double result = 0;
+        int n = y.Length;
+        if (x.Length == y.Length)
+        {
+            result = Enumerable.Range(0, n).Sum(i => (x[i] - x.Average()) * (y[i] - y.Average()));
+        }
+        return result;
+    }
+    [HttpGet("predict")]
+    public async Task<IActionResult> Predict(double[] y, double[] x, double indNum)
+    {
+        double slope = SXY(x, y) / SXX(x);
+        double yIntercept = y.Average() - (slope * x.Average());
+        return Ok(yIntercept + slope * indNum);
+    }
+    #endregion
 
 	/// <summary>
 	/// Get data of a stock code by id
@@ -255,4 +279,5 @@ public class StockAnalysisController : ControllerBase
 			}
 		}
 	}
+
 }
