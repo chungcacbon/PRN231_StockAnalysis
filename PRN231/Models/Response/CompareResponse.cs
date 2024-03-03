@@ -5,7 +5,7 @@ namespace PRN231.Models.Response
     public class CompareResponse
     {
         [JsonProperty("t")]
-        public List<long> Times { get; set; }
+        public List<long> Time { get; set; }
 
         [JsonProperty("c")]
         public List<double> Close { get; set; }
