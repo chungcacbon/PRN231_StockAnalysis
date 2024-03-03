@@ -85,8 +85,8 @@ public class StockAnalysisController : ControllerBase
             }
 			var response = new
 			{
-				firstPrice = first.c,
-				secondPrice = second.c,
+				firstPrice = first,
+				secondPrice = second,
 			};
             return Ok(response);
         }

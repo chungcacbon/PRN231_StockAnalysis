@@ -1,15 +1,25 @@
-﻿namespace PRN231.Models.Response
+﻿using Newtonsoft.Json;
+
+namespace PRN231.Models.Response
 {
     public class CompareResponse
     {
-        public string Sym { get; set; }
-        public string s { get; set; }
-        public List<int> t { get; set; }
-        public List<double> c { get; set; }
-        public List<double> o { get; set; }
-        public List<double> h { get; set; }
-        public List<double> l { get; set; }
-        public List<int> v { get; set; }
+        [JsonProperty("t")]
+        public List<long> Times { get; set; }
 
+        [JsonProperty("c")]
+        public List<double> Close { get; set; }
+
+        [JsonProperty("o")]
+        public List<double> Open { get; set; }
+
+        [JsonProperty("h")]
+        public List<double> Hight { get; set; }
+
+        [JsonProperty("l")]
+        public List<double> Low { get; set; }
+
+        [JsonProperty("v")]
+        public List<int> Volume { get; set; }
     }
 }
