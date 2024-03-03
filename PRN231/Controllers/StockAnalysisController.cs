@@ -4,6 +4,8 @@ using System.Text;
 using Newtonsoft.Json;
 using PRN231.Models.Requests;
 using System.Net;
+using System;
+using PRN231.Models.Response;
 
 namespace PRN231.Controllers;
 [Route("[controller]/api")]
@@ -17,8 +19,8 @@ public class StockAnalysisController : ControllerBase
 		_clientFactory = clientFactory;
 	}
 
-	[HttpGet("export/{id}")]
-	public async Task<IActionResult> ExportAsync(string id)
+	[HttpGet("export")]
+	public async Task<IActionResult> ExportAsync([FromQuery] string[] ids)
 	{
 		void WriteToExcel(MemoryStream stream, List<Stock> stocks)
 		{
@@ -39,7 +41,7 @@ public class StockAnalysisController : ControllerBase
 			}
 		}
 		var client = _clientFactory.CreateClient();
-		var response = await client.GetAsync($"https://bgapidatafeed.vps.com.vn/getliststockdata/{id}");
+		var response = await client.GetAsync($"https://bgapidatafeed.vps.com.vn/getliststockdata/{string.Join(", ", ids)}");
 
 		if (response.IsSuccessStatusCode)
 		{
@@ -67,20 +69,26 @@ public class StockAnalysisController : ControllerBase
     public async Task<IActionResult> Compare(CompareRequest request)
     {
         var client = _clientFactory.CreateClient();
-        var response = await client.GetAsync($"https://bgapidatafeed.vps.com.vn/getliststockdata/{request.FirstCode},{request.SecondCode}");
-        if (response.IsSuccessStatusCode)
+        var firstResponse = await client.GetAsync($"https://histdatafeed.vps.com.vn/tradingview/history?symbol={request.FirstCode}&resolution=1D&from=1675247497&to=1709461957");
+		var secondResponse = await client.GetAsync($"https://histdatafeed.vps.com.vn/tradingview/history?symbol={request.SecondCode}&resolution=1D&from=1675247497&to=1709461957");
+        if (firstResponse.IsSuccessStatusCode && secondResponse.IsSuccessStatusCode)
         {
-            var content = await response.Content.ReadAsStringAsync();
-            var stocks = JsonConvert.DeserializeObject<Stock[]>(content);
-            if (stocks == null || stocks.Length == 0)
+            var first = JsonConvert.DeserializeObject<CompareResponse>(await firstResponse.Content.ReadAsStringAsync());
+			var second = JsonConvert.DeserializeObject<CompareResponse>(await secondResponse.Content.ReadAsStringAsync());
+            if (first is null || second is null)
             {
                 return BadRequest("id not found");
             }
-            return Ok(stocks);
+			var response = new
+			{
+				firstPrice = first.c,
+				secondPrice = second.c,
+			};
+            return Ok(response);
         }
         else
         {
-            return StatusCode((int)response.StatusCode, "Failed to get data from the API.");
+            return StatusCode((int)firstResponse.StatusCode, "Failed to get data from the API.");
         }
     }
 
@@ -100,14 +108,14 @@ public class StockAnalysisController : ControllerBase
         }
         return result;
     }
-    [HttpGet("predict")]
+	[HttpGet("predict")]
     public async Task<IActionResult> Predict(double[] y, double[] x, double indNum)
-    {
-        double slope = SXY(x, y) / SXX(x);
-        double yIntercept = y.Average() - (slope * x.Average());
-        return Ok(yIntercept + slope * indNum);
-    }
-    #endregion
+	{
+		double slope = SXY(x, y) / SXX(x);
+		double yIntercept = y.Average() - (slope * x.Average());
+		return Ok(yIntercept + slope * indNum);
+	}
+	#endregion
 
 	/// <summary>
 	/// Get data of a stock code by id
