@@ -101,7 +101,7 @@ public class StockAnalysisController : ControllerBase
         return result;
     }
     [HttpGet("predict")]
-    public async Task<IActionResult> Predict(double[] y, double[] x, double indNum)
+    public async Task<IActionResult> Predict([FromQuery] double[] y, [FromQuery] double[] x, double indNum)
     {
         double slope = SXY(x, y) / SXX(x);
         double yIntercept = y.Average() - (slope * x.Average());
