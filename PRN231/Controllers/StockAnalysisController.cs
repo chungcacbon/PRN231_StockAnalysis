@@ -22,30 +22,30 @@ public class StockAnalysisController : ControllerBase
     {
         _clientFactory = clientFactory;
     }
-    
-	[HttpGet("export")]
-	public async Task<IActionResult> ExportAsync([FromQuery] string[] ids)
-	{
-		void WriteToExcel(MemoryStream stream, List<Stock> stocks)
-		{
-			using (StreamWriter writer = new StreamWriter(stream, Encoding.UTF8, 1024, true))
-			{
-				writer.WriteLine("Id,Symbol,MC,C,F,LastPrice,LastVolume,Lot,ot,ChangePc,AvePrice,HighPrice,LowPrice,fBVol,fBValue,fSVolume,fSValue,fRoom,g1,g2,g3,g4,g5,g6,g7,mp,CWUnderlying,CWIssuerName,CWType,CWMaturityDate,CWLastTradingDate,CWExcersisePrice,CWExerciseRatio,CWListedShare,sType,sBenefit");
 
-				foreach (var stock in stocks)
-				{
-					writer.WriteLine($"{stock.Id},{stock.Sym},{stock.Mc}," +
-						$"{stock.C},{stock.F},{stock.LastPrice},{stock.LastVolume}," +
-						$"{stock.Lot},{stock.Ot},{stock.ChangePc},{stock.AvePrice},{stock.HighPrice}," +
-						$"{stock.LowPrice},{stock.FBVol},{stock.FBValue},{stock.FSVolume},{stock.FSValue}," +
-						$"{stock.FRoom},{stock.G1},{stock.G2},{stock.G3},{stock.G4},{stock.G5},{stock.G6}" +
-						$",{stock.G7},{stock.Mp},{stock.CWUnderlying},{stock.CWIssuerName},{stock.CWType}" +
-						$",{stock.CWMaturityDate},{stock.CWLastTradingDate},{stock.CWExcersisePrice},{stock.CWExerciseRatio},{stock.CWListedShare},{stock.SType},{stock.SBenefit}");
-				}
-			}
-		}
-		var client = _clientFactory.CreateClient();
-		var response = await client.GetAsync($"https://bgapidatafeed.vps.com.vn/getliststockdata/{string.Join(", ", ids)}");
+    [HttpGet("export")]
+    public async Task<IActionResult> ExportAsync([FromQuery] string[] ids)
+    {
+        void WriteToExcel(MemoryStream stream, List<Stock> stocks)
+        {
+            using (StreamWriter writer = new StreamWriter(stream, Encoding.UTF8, 1024, true))
+            {
+                writer.WriteLine("Id,Symbol,MC,C,F,LastPrice,LastVolume,Lot,ot,ChangePc,AvePrice,HighPrice,LowPrice,fBVol,fBValue,fSVolume,fSValue,fRoom,g1,g2,g3,g4,g5,g6,g7,mp,CWUnderlying,CWIssuerName,CWType,CWMaturityDate,CWLastTradingDate,CWExcersisePrice,CWExerciseRatio,CWListedShare,sType,sBenefit");
+
+                foreach (var stock in stocks)
+                {
+                    writer.WriteLine($"{stock.Id},{stock.Sym},{stock.Mc}," +
+                        $"{stock.C},{stock.F},{stock.LastPrice},{stock.LastVolume}," +
+                        $"{stock.Lot},{stock.Ot},{stock.ChangePc},{stock.AvePrice},{stock.HighPrice}," +
+                        $"{stock.LowPrice},{stock.FBVol},{stock.FBValue},{stock.FSVolume},{stock.FSValue}," +
+                        $"{stock.FRoom},{stock.G1},{stock.G2},{stock.G3},{stock.G4},{stock.G5},{stock.G6}" +
+                        $",{stock.G7},{stock.Mp},{stock.CWUnderlying},{stock.CWIssuerName},{stock.CWType}" +
+                        $",{stock.CWMaturityDate},{stock.CWLastTradingDate},{stock.CWExcersisePrice},{stock.CWExerciseRatio},{stock.CWListedShare},{stock.SType},{stock.SBenefit}");
+                }
+            }
+        }
+        var client = _clientFactory.CreateClient();
+        var response = await client.GetAsync($"https://bgapidatafeed.vps.com.vn/getliststockdata/{string.Join(", ", ids)}");
 
         if (response.IsSuccessStatusCode)
         {
@@ -69,25 +69,65 @@ public class StockAnalysisController : ControllerBase
         }
     }
 
+    private DateTime UnixTimeStampToDateTime(long unixTimestamp)
+    {
+        DateTimeOffset dateTimeOffset = DateTimeOffset.FromUnixTimeSeconds(unixTimestamp);
+        return dateTimeOffset.DateTime;
+    }
+
     [HttpPost("compare")]
     public async Task<IActionResult> Compare(CompareRequest request)
     {
         var client = _clientFactory.CreateClient();
         var firstResponse = await client.GetAsync($"https://histdatafeed.vps.com.vn/tradingview/history?symbol={request.FirstCode}&resolution=1D&from=1675247497&to=1709461957");
-		var secondResponse = await client.GetAsync($"https://histdatafeed.vps.com.vn/tradingview/history?symbol={request.SecondCode}&resolution=1D&from=1675247497&to=1709461957");
+        var secondResponse = await client.GetAsync($"https://histdatafeed.vps.com.vn/tradingview/history?symbol={request.SecondCode}&resolution=1D&from=1675247497&to=1709461957");
         if (firstResponse.IsSuccessStatusCode && secondResponse.IsSuccessStatusCode)
         {
             var first = JsonConvert.DeserializeObject<CompareResponse>(await firstResponse.Content.ReadAsStringAsync());
-			var second = JsonConvert.DeserializeObject<CompareResponse>(await secondResponse.Content.ReadAsStringAsync());
+            var second = JsonConvert.DeserializeObject<CompareResponse>(await secondResponse.Content.ReadAsStringAsync());
             if (first is null || second is null)
             {
                 return BadRequest("id not found");
             }
-			var response = new
-			{
-				firstPrice = first,
-				secondPrice = second,
-			};
+
+            var listFirst = new List<CompareObjectResponse>();
+            var listSecond = new List<CompareObjectResponse>();
+
+            for (int i = 0; i < first.Time.Count; i++)
+            {
+                listFirst.Add(
+                    new CompareObjectResponse
+                    {
+                        Time = UnixTimeStampToDateTime(first.Time[i]),
+                        Close = first.Close[i],
+                        Hight = first.Hight[i],
+                        Low = first.Low[i],
+                        Open = first.Open[i],
+                        Volume = first.Volume[i],
+                    });
+
+            }
+
+            for (int i = 0; i < second.Time.Count; i++)
+            {
+                listSecond.Add(
+                    new CompareObjectResponse
+                    {
+                        Time = UnixTimeStampToDateTime(second.Time[i]),
+                        Close = second.Close[i],
+                        Hight = second.Hight[i],
+                        Low = second.Low[i],
+                        Open = second.Open[i],
+                        Volume = second.Volume[i],
+                    });
+
+            }
+
+            var response = new
+            {
+                listFirst,
+                listSecond,
+            };
             return Ok(response);
         }
         else
@@ -122,34 +162,34 @@ public class StockAnalysisController : ControllerBase
     }
     #endregion
 
-    
-	/// <summary>
-	/// Get data of a stock code by id
-	/// </summary>
-	/// <returns>Data of a stock code</returns>
-	///  version: 1
-	///  created by: Nguyễn Thiện Thắng
-	///  created at: 2024/22/2
-	[HttpGet("/{id}")]
-	public async Task<IActionResult> GetById(string id)
-	{
-		var client = _clientFactory.CreateClient();
-		var response = await client.GetAsync($"https://histdatafeed.vps.com.vn/tradingview/history?symbol={id}&resolution=1D&from=1675259284&to=1709473744");
-		if (response.IsSuccessStatusCode)
-		{
-			var content = await response.Content.ReadAsStringAsync();
-			var stocks = JsonConvert.DeserializeObject<StocksOverTime>(content);
-			if (stocks == null)
-			{
-				return BadRequest("id not found");
-			}
-			return Ok(stocks);
-		}
-		else
-		{
-			return StatusCode((int)response.StatusCode, "Failed to get data from the API.");
-		}
-	}
+
+    /// <summary>
+    /// Get data of a stock code by id
+    /// </summary>
+    /// <returns>Data of a stock code</returns>
+    ///  version: 1
+    ///  created by: Nguyễn Thiện Thắng
+    ///  created at: 2024/22/2
+    [HttpGet("/{id}")]
+    public async Task<IActionResult> GetById(string id)
+    {
+        var client = _clientFactory.CreateClient();
+        var response = await client.GetAsync($"https://histdatafeed.vps.com.vn/tradingview/history?symbol={id}&resolution=1D&from=1675259284&to=1709473744");
+        if (response.IsSuccessStatusCode)
+        {
+            var content = await response.Content.ReadAsStringAsync();
+            var stocks = JsonConvert.DeserializeObject<StocksOverTime>(content);
+            if (stocks == null)
+            {
+                return BadRequest("id not found");
+            }
+            return Ok(stocks);
+        }
+        else
+        {
+            return StatusCode((int)response.StatusCode, "Failed to get data from the API.");
+        }
+    }
 
     /// <summary>
     /// Get data by stock Exchanges
@@ -258,39 +298,39 @@ public class StockAnalysisController : ControllerBase
                 {
                     return BadRequest("Exchanges code not found");
                 }
-				var upcomResponse = await client.GetAsync(upCom);
-				var upcomContent = await upcomResponse.Content.ReadAsStringAsync();
-				var upcomStocks = JsonConvert.DeserializeObject<Stock[]>(upcomContent);
-				if (upcomStocks == null || upcomStocks.Length == 0)
-				{
-					return BadRequest("Exchanges code not found");
-				}
-				return Ok(upcom30Stocks.Concat(upcomStocks).ToArray());
-			}
-			else
-			{
-				return StatusCode(500, "Failed to get data from the API.");
-			}
-		}
-		// other exchanges
-		else
-		{
-			var exchangesDataResponse = await client.GetAsync(exchangesApiUrl);
-			if (exchangesDataResponse.IsSuccessStatusCode)
-			{
-				var exchangesContent = await exchangesDataResponse.Content.ReadAsStringAsync();
-				var exchangesStockData = JsonConvert.DeserializeObject<Stock[]>(exchangesContent);
-				if (exchangesStockData == null || exchangesStockData.Length == 0)
-				{
-					return BadRequest("Exchanges code not found");
-				}
-				return Ok(exchangesStockData);
-			}
-			else
-			{
-				return StatusCode((int)exchangesDataResponse.StatusCode, "Failed to get data from the API.");
-			}
-		}
-	}
+                var upcomResponse = await client.GetAsync(upCom);
+                var upcomContent = await upcomResponse.Content.ReadAsStringAsync();
+                var upcomStocks = JsonConvert.DeserializeObject<Stock[]>(upcomContent);
+                if (upcomStocks == null || upcomStocks.Length == 0)
+                {
+                    return BadRequest("Exchanges code not found");
+                }
+                return Ok(upcom30Stocks.Concat(upcomStocks).ToArray());
+            }
+            else
+            {
+                return StatusCode(500, "Failed to get data from the API.");
+            }
+        }
+        // other exchanges
+        else
+        {
+            var exchangesDataResponse = await client.GetAsync(exchangesApiUrl);
+            if (exchangesDataResponse.IsSuccessStatusCode)
+            {
+                var exchangesContent = await exchangesDataResponse.Content.ReadAsStringAsync();
+                var exchangesStockData = JsonConvert.DeserializeObject<Stock[]>(exchangesContent);
+                if (exchangesStockData == null || exchangesStockData.Length == 0)
+                {
+                    return BadRequest("Exchanges code not found");
+                }
+                return Ok(exchangesStockData);
+            }
+            else
+            {
+                return StatusCode((int)exchangesDataResponse.StatusCode, "Failed to get data from the API.");
+            }
+        }
+    }
 
 }
