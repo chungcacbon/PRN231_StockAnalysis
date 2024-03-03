@@ -353,7 +353,7 @@ public class StockAnalysisController : ControllerBase
 		{
 			StocksOverTimeResponse stockData = new StocksOverTimeResponse
 			{
-				Time = t[i],
+				Time = UnixTimeStampToDateTime( t[i]),
 				Close = c[i],
 				Open = o[i],
 				High = h[i],
