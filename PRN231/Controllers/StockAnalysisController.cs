@@ -4,8 +4,12 @@ using System.Text;
 using Newtonsoft.Json;
 using PRN231.Models.Requests;
 using System.Net;
+
+using PRN231.DTOs;
+
 using System;
 using PRN231.Models.Response;
+
 
 namespace PRN231.Controllers;
 [Route("[controller]/api")]
@@ -108,15 +112,16 @@ public class StockAnalysisController : ControllerBase
         }
         return result;
     }
-	[HttpGet("predict")]
-    public async Task<IActionResult> Predict(double[] y, double[] x, double indNum)
-	{
-		double slope = SXY(x, y) / SXX(x);
-		double yIntercept = y.Average() - (slope * x.Average());
-		return Ok(yIntercept + slope * indNum);
-	}
-	#endregion
 
+    [HttpGet("predict")]
+    public async Task<IActionResult> Predict([FromQuery] double[] y, double[] x, double indNum)
+    {
+        double slope = SXY(x, y) / SXX(x);
+        double yIntercept = y.Average() - (slope * x.Average());
+        return Ok(yIntercept + slope * indNum);
+    }
+    #endregion
+    
 	/// <summary>
 	/// Get data of a stock code by id
 	/// </summary>
@@ -128,12 +133,12 @@ public class StockAnalysisController : ControllerBase
 	public async Task<IActionResult> GetById(string id)
 	{
 		var client = _clientFactory.CreateClient();
-		var response = await client.GetAsync($"https://bgapidatafeed.vps.com.vn/getliststockdata/{id}");
+		var response = await client.GetAsync($"https://histdatafeed.vps.com.vn/tradingview/history?symbol={id}&resolution=1D&from=1675259284&to=1709473744");
 		if (response.IsSuccessStatusCode)
 		{
 			var content = await response.Content.ReadAsStringAsync();
-			var stocks = JsonConvert.DeserializeObject<Stock[]>(content);
-			if (stocks == null || stocks.Length == 0)
+			var stocks = JsonConvert.DeserializeObject<StocksOverTime>(content);
+			if (stocks == null)
 			{
 				return BadRequest("id not found");
 			}
@@ -260,7 +265,6 @@ public class StockAnalysisController : ControllerBase
 				{
 					return BadRequest("Exchanges code not found");
 				}
-
 				return Ok(upcom30Stocks.Concat(upcomStocks).ToArray());
 			}
 			else
