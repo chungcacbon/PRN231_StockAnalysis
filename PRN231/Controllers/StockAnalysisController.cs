@@ -201,7 +201,13 @@ public class StockAnalysisController : ControllerBase
                         countDesc++;
                     }
                 }
-                return Ok($"Increase probability: {(countDesc / (length - 1)).ToString("F2")}, +{((1 - (min / avg)) * 100).ToString("F3")}%, decrease probability: {(countAsc / (length - 1)).ToString("F2")}, -{((1 - (avg / max)) * 100).ToString("F3")}%");
+                return Ok(new PredictValues()
+                {
+                    IncreaseProbability = (countDesc / (length - 1)).ToString("F2"),
+                    IncreasePercent = ((1 - (min / avg)) * 100).ToString("F3"),
+                    DecreaseProbability = (countAsc / (length - 1)).ToString("F2"),
+                    DecreasePercent = ((1 - (max / avg)) * 100).ToString("F3")
+                });
             }
             else
             {
