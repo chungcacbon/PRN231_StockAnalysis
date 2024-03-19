@@ -166,11 +166,12 @@ public class StockAnalysisController : ControllerBase
     [HttpGet("predict")]
     public async Task<IActionResult> Predict(string id)
     {
+        const int dayGap = 30;
         try
         {
             // get stocks data
             var client = _clientFactory.CreateClient();
-            var response = await client.GetAsync($"https://histdatafeed.vps.com.vn/tradingview/history?symbol={id}&resolution=1D&from={DateTimeOffset.UtcNow.AddDays(-10).ToUnixTimeSeconds()}&to={DateTimeOffset.UtcNow.ToUnixTimeSeconds()}");
+            var response = await client.GetAsync($"https://histdatafeed.vps.com.vn/tradingview/history?symbol={id}&resolution=1D&from={DateTimeOffset.UtcNow.AddDays(-dayGap).ToUnixTimeSeconds()}&to={DateTimeOffset.UtcNow.ToUnixTimeSeconds()}");
             if (response.IsSuccessStatusCode)
             {
                 var content = await response.Content.ReadAsStringAsync();
@@ -180,10 +181,10 @@ public class StockAnalysisController : ControllerBase
                     return BadRequest("id not found");
                 }
                 StocksOverTimeResponse[] stocksOverTimeResponses = MapToSOToSOR(stocks).OrderByDescending(stock => stock.Time).ToArray();
-                /* find average of close price base on 10 first record 
-                 if stocksOverTimeResponses' length is less than 10 then take the length of it
+                /* find average of close price base on dayGap first record 
+                 if stocksOverTimeResponses' length is less than dayGap then take the length of it
                  */
-                var length = stocksOverTimeResponses.Length >= 10 ? 10 : stocksOverTimeResponses.Length;
+                var length = stocksOverTimeResponses.Length >= dayGap ? dayGap : stocksOverTimeResponses.Length;
                 double avg = stocksOverTimeResponses.Take(length).Average(s => s.Close);
                 double max = stocksOverTimeResponses.Take(length).Max(s => s.Close);
                 double min = stocksOverTimeResponses.Take(length).Min(s => s.Close);
@@ -206,7 +207,7 @@ public class StockAnalysisController : ControllerBase
                     IncreaseProbability = (countDesc / (length - 1)).ToString("F2"),
                     IncreasePercent = ((1 - (min / avg)) * 100).ToString("F3"),
                     DecreaseProbability = (countAsc / (length - 1)).ToString("F2"),
-                    DecreasePercent = ((1 - (max / avg)) * 100).ToString("F3")
+                    DecreasePercent = ((1 - (avg / max)) * 100).ToString("F3")
                 });
             }
             else
