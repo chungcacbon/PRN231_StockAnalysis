@@ -198,7 +198,7 @@ public class StockAnalysisController : ControllerBase
     }
 
     /* Prediction analyze*/
-    [HttpPost("predict/analyze")]
+    [HttpGet("predict/analyze")]
     public async Task<IActionResult> PredictionAnalyze(string id)
     {
         try
