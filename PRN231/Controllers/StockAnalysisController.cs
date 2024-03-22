@@ -9,6 +9,7 @@ using PRN231.DTOs;
 
 using System;
 using PRN231.Models.Response;
+using Microsoft.AspNetCore.DataProtection.KeyManagement;
 
 
 namespace PRN231.Controllers;
@@ -137,32 +138,6 @@ public class StockAnalysisController : ControllerBase
     }
 
     #region Duc
-    //private double SXX(double[] arr)
-    //{
-    //	double avg = arr.Average();
-    //	return arr.Sum(x => Math.Pow(x - avg, 2));
-    //}
-    //private double SXY(double[] y, double[] x)
-    //{
-    //	double result = 0;
-    //	int n = y.Length;
-    //	if (x.Length == y.Length)
-    //	{
-    //		result = Enumerable.Range(0, n).Sum(i => (x[i] - x.Average()) * (y[i] - y.Average()));
-    //	}
-    //	return result;
-    //}
-
-    //[HttpGet("predict")]
-    //public async Task<IActionResult> Predict([FromQuery] double[] y, [FromQuery] double[] x, double indNum)
-    //{
-    //	double slope = SXY(x, y) / SXX(x);
-    //	double yIntercept = y.Average() - (slope * x.Average());
-    //	return Ok(yIntercept + slope * indNum);
-    //}
-
-
-
     [HttpGet("predict")]
     public async Task<IActionResult> Predict(string id)
     {
@@ -204,6 +179,7 @@ public class StockAnalysisController : ControllerBase
                 }
                 return Ok(new PredictValues()
                 {
+                    Id = id,
                     IncreaseProbability = (countDesc / (length - 1)).ToString("F2"),
                     IncreasePercent = ((1 - (min / avg)) * 100).ToString("F3"),
                     DecreaseProbability = (countAsc / (length - 1)).ToString("F2"),
@@ -214,6 +190,60 @@ public class StockAnalysisController : ControllerBase
             {
                 return StatusCode((int)response.StatusCode, "Failed to get data from the API.");
             }
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+
+    /* Prediction analyze*/
+    [HttpPost("predict/analyze")]
+    public async Task<IActionResult> PredictionAnalyze(string id)
+    {
+        try
+        {
+            const string API_KEY = "AIzaSyBo47U2K6BhSDHRqcsa9n9JVHBBEYBHh5c";
+            var client = _clientFactory.CreateClient();
+            // get predict value
+            var predictValueResponse = await client.GetAsync($"https://chungdvhe160135.bsite.net/StockAnalysis/api/predict?id={id}");
+            if (predictValueResponse.IsSuccessStatusCode)
+            {
+                var predictValues = JsonConvert.DeserializeObject<PredictValues>(await predictValueResponse.Content.ReadAsStringAsync());
+                // get precdict value analysis
+                var url = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={API_KEY}";
+                string prompt = $"Mã chứng khoán {id} sau khi được dự đoán thì chúng tôi nhận được các giá trị như là: tỉ lệ giảm giá:" +
+                    $" phần trăm giá cổ phiếu sẽ giảm: {predictValues.DecreaseProbability}," +
+                    $" nếu như cổ phiếu giảm thì sẽ giảm đi bao nhiêu phần trăm {predictValues.DecreasePercent}," +
+                    $" phần trăm giá cổ phiếu sẽ tăng: {predictValues.IncreasePercent}," +
+                    $" nếu như cổ phiếu tăng thì sẽ tăng lên bao nhiêu phần trăm {predictValues.IncreasePercent}," +
+                    $" từ những dữ liệu trên thì hãy cho tôi biết những giá trị này sẽ có tác dụng gì đến quá trình đầu tư chứng khoán của người dùng ?";
+                var body = JsonConvert.SerializeObject(new
+                {
+                    contents = new[] {
+                    new {
+                        parts = new[] {
+                            new {
+                                text = prompt
+                            }
+                        }
+                    }
+                }
+                });
+                // Create StringContent from the JSON string
+                var content = new StringContent(body, Encoding.UTF8, "application/json");
+                var response = await client.PostAsync(url, content);
+                if (response.IsSuccessStatusCode)
+                {
+                    var responseContent = await response.Content.ReadAsStringAsync();
+                    return Ok(responseContent);
+                }
+                else
+                {
+                    return StatusCode((int)response.StatusCode, "Failed to get response from the API.");
+                }
+            }
+            throw new Exception();
         }
         catch (Exception ex)
         {

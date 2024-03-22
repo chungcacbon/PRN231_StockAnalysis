@@ -2,6 +2,7 @@
 {
     public class PredictValues
     {
+        public string Id { get; set; }
         public string IncreasePercent { get; set; }
         public string IncreaseProbability { get; set; }
         public string DecreasePercent { get; set; }
