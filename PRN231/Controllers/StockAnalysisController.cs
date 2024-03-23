@@ -240,7 +240,7 @@ public class StockAnalysisController : ControllerBase
                 }
                 else
                 {
-                    return StatusCode((int)response.StatusCode, "Failed to get response from the API.");
+                    return StatusCode((int)response.StatusCode, new Exception());
                 }
             }
             throw new Exception();
