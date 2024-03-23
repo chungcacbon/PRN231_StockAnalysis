@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Options;
 using PRN231.Middlewares;
 
 namespace PRN231;
@@ -5,7 +6,7 @@ namespace PRN231;
 public class Program
 {
     public static void Main(string[] args)
-      {
+    {
         var builder = WebApplication.CreateBuilder(args);
 
         // Add services to the container.
@@ -15,6 +16,10 @@ public class Program
         builder.Services.AddEndpointsApiExplorer();
         builder.Services.AddSwaggerGen();
         builder.Services.AddHttpClient();
+        builder.Services.AddCors(options =>
+        {
+            options.AddPolicy("CORSPolicy", builder => builder.AllowAnyMethod().AllowAnyHeader().AllowCredentials().SetIsOriginAllowed((hosts) => true));
+        });
 
         var app = builder.Build();
 
@@ -24,7 +29,7 @@ public class Program
             app.UseSwagger();
             app.UseSwaggerUI();
         }
-
+        app.UseCors("CORSPolicy");
         app.UseHttpsRedirection();
 
         app.UseAuthorization();
